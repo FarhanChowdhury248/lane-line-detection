@@ -9,8 +9,9 @@ IMAGE_DEST_NAME = './v1/results/lanes{}.png'.format(VAL)
 
 BLUR_KERNEL_SIZE = 5
 
-CANNY_EDGE_LOW_T = 100
-CANNY_EDGE_HIGH_T = 150
+CANNY_EDGE_LOW_T = 10
+CANNY_EDGE_HIGH_T = 200
+SOBEL_L_THRESHOLD = 150
 
 PERSPECTIVE_WARP_SRC=np.float32([(0.4,0.3),(0.6,0.3),(0.1,1),(1,1)])
 PERSPECTIVE_WARP_DST=np.float32([(0,0), (1, 0), (0,1), (1,1)])
@@ -89,19 +90,18 @@ def get_blur(image, kernel=(BLUR_KERNEL_SIZE, BLUR_KERNEL_SIZE), show=False):
     plt.show()
   return blur
 
-def get_canny_edges(image, low_t=CANNY_EDGE_LOW_T, high_t=CANNY_EDGE_HIGH_T, show=False):
-  edges = cv.Canny(image, low_t, high_t)
-  if show:
-    plt.imshow(edges, cmap='gray')
-    plt.show()
-  return edges
-
-def get_sobel(img, s_thresh=(100, 255), sx_thresh=(15, 255), show=False):
+def get_sobel(img, s_thresh=(100, 255), sx_thresh=(CANNY_EDGE_LOW_T, CANNY_EDGE_HIGH_T), l_thresh=SOBEL_L_THRESHOLD, show=False):
     # Convert to HLS color space and separate the V channel
     hls = cv.cvtColor(img, cv.COLOR_BGR2HLS).astype(float)
     l_channel = hls[:,:,1]
     s_channel = hls[:,:,2]
     h_channel = hls[:,:,0]
+
+    # increase contrast
+    min_l = l_thresh
+    if min_l is not None: l_channel = np.clip(l_channel, None, min_l)
+    # plt.imshow(l_channel, cmap='gray')
+    # plt.show()
 
     # Sobel x
     sobelx = cv.Sobel(l_channel, cv.CV_64F, 1, 1) # Take the derivative in x
@@ -260,21 +260,62 @@ def perspective_warp(img, src, dst, show=False):
 
 # MAIN
 
-def main(vals=range(1, 10)):
-  for i in vals:
+def main_sobel(vals=range(1, 10)):
+  fig = plt.figure()
+  SOBEL_VALS = [100, 125, 150, None]
+  fig_shape = (1+len(SOBEL_VALS), len(vals))
+  fig.suptitle('Sobel L Thresholds: 100, 125, 150, None')
+
+  for idx, i in enumerate(vals):
     img_title = './v1/photos/lanes{}.jpg'.format(i)
     print("Processing {}".format(img_title))
 
     image = get_image(img_title)
+    ax = plt.subplot2grid(fig_shape, (0, idx))
+    ax.imshow(image)
+    plt.axis('off')
 
     # grayscale = get_grayscale(image)
-    # blur = get_blur(grayscale, show=True)
-    edges = get_sobel(image, show=True)
-    warped = perspective_warp(edges, PERSPECTIVE_WARP_SRC, PERSPECTIVE_WARP_DST, show=True)
+    # blur = get_blur(grayscale)
+    for idx2, st in enumerate(SOBEL_VALS):
+      edges = get_sobel(image, l_thresh=st)
+      warped = perspective_warp(edges, PERSPECTIVE_WARP_SRC, PERSPECTIVE_WARP_DST)
+      out_img, curves, lanes, ploty = sliding_window(warped)
+      img_ = draw_lanes(image, curves[0], curves[1])
+      ax = plt.subplot2grid(fig_shape, (idx2+1, idx))
+      ax.imshow(img_, cmap='hsv')
+      plt.axis('off')
+  plt.subplots_adjust(left=0,bottom=0,right=1,top=0.95,wspace=0,hspace=0)
+  plt.show()
+
+def main(vals=range(1, 10)):
+  fig = plt.figure()
+  fig_shape = (3, len(vals))
+  # fig.suptitle('Sobel L Thresholds: 100, 125, 150, None')
+
+  for idx, i in enumerate(vals):
+    img_title = './v1/photos/lanes{}.jpg'.format(i)
+    print("Processing {}".format(img_title))
+
+    image = get_image(img_title)
+    ax = plt.subplot2grid(fig_shape, (0, idx))
+    ax.imshow(image)
+    plt.axis('off')
+
+    # grayscale = get_grayscale(image)
+    # blur = get_blur(grayscale)
+    edges = get_sobel(image)
+    ax = plt.subplot2grid(fig_shape, (1, idx))
+    ax.imshow(edges, cmap='gray')
+    plt.axis('off')
+    warped = perspective_warp(edges, PERSPECTIVE_WARP_SRC, PERSPECTIVE_WARP_DST)
     out_img, curves, lanes, ploty = sliding_window(warped)
     img_ = draw_lanes(image, curves[0], curves[1])
-    plt.imshow(img_, cmap='hsv')
-    plt.show()
+    ax = plt.subplot2grid(fig_shape, (2, idx))
+    ax.imshow(img_, cmap='hsv')
+    plt.axis('off')
+  plt.subplots_adjust(left=0,bottom=0,right=1,top=0.95,wspace=0,hspace=0)
+  plt.show()
 
 if __name__ == "__main__":
   main(range(1, 9))
