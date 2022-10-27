@@ -9,8 +9,8 @@ IMAGE_DEST_NAME = './v1/results/lanes{}.png'.format(VAL)
 
 BLUR_KERNEL_SIZE = 5
 
-CANNY_EDGE_LOW_T = 10
-CANNY_EDGE_HIGH_T = 200
+CANNY_EDGE_LOW_T =30
+CANNY_EDGE_HIGH_T = 300
 SOBEL_L_THRESHOLD = 150
 
 PERSPECTIVE_WARP_SRC=np.float32([(0.4,0.3),(0.6,0.3),(0.1,1),(1,1)])
@@ -262,9 +262,12 @@ def perspective_warp(img, src, dst, show=False):
 
 def main_sobel(vals=range(1, 10)):
   fig = plt.figure()
-  SOBEL_VALS = [100, 125, 150, None]
+  SOBEL_VALS = [100, 125, 150, 200, None]
   fig_shape = (1+len(SOBEL_VALS), len(vals))
-  fig.suptitle('Sobel L Thresholds: 100, 125, 150, None')
+  fig_title = 'Sobel L Thresholds: 100, 125, 150, 200, None        Canny Thresh: ({}, {})'.format(
+    CANNY_EDGE_LOW_T, 
+    CANNY_EDGE_HIGH_T)
+  fig.suptitle(fig_title)
 
   for idx, i in enumerate(vals):
     img_title = './v1/photos/lanes{}.jpg'.format(i)
@@ -280,15 +283,18 @@ def main_sobel(vals=range(1, 10)):
     for idx2, st in enumerate(SOBEL_VALS):
       edges = get_sobel(image, l_thresh=st)
       warped = perspective_warp(edges, PERSPECTIVE_WARP_SRC, PERSPECTIVE_WARP_DST)
-      out_img, curves, lanes, ploty = sliding_window(warped)
-      img_ = draw_lanes(image, curves[0], curves[1])
-      ax = plt.subplot2grid(fig_shape, (idx2+1, idx))
-      ax.imshow(img_, cmap='hsv')
-      plt.axis('off')
+      try:
+        out_img, curves, lanes, ploty = sliding_window(warped)
+        img_ = draw_lanes(image, curves[0], curves[1])
+        ax = plt.subplot2grid(fig_shape, (idx2+1, idx))
+        ax.imshow(img_, cmap='hsv')
+        plt.axis('off')
+      except:
+        print('\tError')
   plt.subplots_adjust(left=0,bottom=0,right=1,top=0.95,wspace=0,hspace=0)
   plt.show()
 
-def main(vals=range(1, 10)):
+def main(vals):
   fig = plt.figure()
   fig_shape = (3, len(vals))
   # fig.suptitle('Sobel L Thresholds: 100, 125, 150, None')
@@ -318,5 +324,5 @@ def main(vals=range(1, 10)):
   plt.show()
 
 if __name__ == "__main__":
-  main(range(1, 9))
+  main_sobel(range(2, 9))
   # main([2])
