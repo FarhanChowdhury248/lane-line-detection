@@ -25,56 +25,6 @@ def get_image(file_name=IMAGE_FILE_NAME, show=False):
     plt.show()
   return image
 
-def draw_lane_lines(img, lines, color=[255, 0, 0], thickness=7, debug=False):
-  x_bottom_pos = []
-  x_upper_pos = []
-  x_bottom_neg = []
-  x_upper_neg = []
-
-  height = img.shape[0]
-  y_bottom = height
-  y_upper = height * 0.66
-
-  for line in lines:
-    for x1,y1,x2,y2 in line:
-      slope = (y2 - y1) / (x2 - x1)
-      b = y1 - slope*x1
-
-      if debug:
-        print("Line Info")
-        print("\tCoords: ({}, {}) -> ({}, {})".format(x1,y1,x2,y2))
-        print("\tLine: {}, {}".format(slope, b))
-        print("\tIs Bottom: {}".format(max(y1, y2) >= LINE_SLOPE_BOTTOM * height))
-
-      # skip lines that do not start near the bottom
-      if max(y1, y2) < LINE_SLOPE_BOTTOM * height: continue
-      
-      # test and filter values to slope
-      if LINE_SLOPE_MIN < slope < LINE_SLOPE_MAX:
-        x_bottom_pos.append((y_bottom - b) / slope)
-        x_upper_pos.append((y_upper - b) / slope)     
-      elif -LINE_SLOPE_MAX < slope < -LINE_SLOPE_MIN:
-        x_bottom_neg.append((y_bottom - b) / slope)
-        x_upper_neg.append((y_upper - b) / slope)
-
-  # a new 2d array with means
-  if debug:
-    print(len(x_bottom_pos))
-    print(len(x_upper_pos))
-    print(len(x_bottom_neg))
-    print(len(x_upper_neg))
-  lines_mean = np.array([[int(np.mean(x_bottom_pos)), int(np.mean(y_bottom)), int(np.mean(x_upper_pos)), int(np.mean(y_upper))], 
-                         [int(np.mean(x_bottom_neg)), int(np.mean(y_bottom)), int(np.mean(x_upper_neg)), int(np.mean(y_upper))]])
-
-  # Draw the lines
-  for i in range(len(lines_mean)):
-    cv.line(img, (lines_mean[i, 0], lines_mean[i, 1]), (lines_mean[i, 2], lines_mean[i, 3]), color, thickness)
-
-def draw_all_lines(img, lines, color=[0, 255, 0], thickness=7):
-  for line in lines:
-    for x1,y1,x2,y2 in line:
-      cv.line(img, (x1, y1), (x2, y2), color, thickness)
-
 # PIPELINE
 def get_grayscale(image, show=False):
   grayscale = cv.cvtColor(image, cv.COLOR_RGB2GRAY)
